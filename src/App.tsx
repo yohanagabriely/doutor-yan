@@ -15,6 +15,7 @@ import { ClinicTourModal } from './components/ClinicTourModal';
 import { WelcomePopup } from './components/WelcomePopup';
 import { WhatsAppButton } from './components/WhatsAppButton';
 import { BackToTopButton } from './components/BackToTopButton';
+import { AccessibilityButton } from './components/AccessibilityButton';
 
 export default function App() {
   const [isBookingOpen, setIsBookingOpen] = useState(false);
@@ -85,6 +86,8 @@ export default function App() {
 
       {/* FLOATING BACK TO TOP ACTION */}
       <BackToTopButton />
+
+      <AccessibilityButton />
     </div>
   );
 }
