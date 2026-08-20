@@ -1,0 +1,8 @@
+{
+  "name": "Remix Dr. Yan Guilherme - Odontologia Estética",
+  "description": "Website oficial do Dr. Yan Guilherme, Cirurgião-Dentista especializado em estética dental, implantes e reabilitação oral em Porto de Galinhas, PE.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
