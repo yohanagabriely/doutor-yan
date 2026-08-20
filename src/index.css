@@ -16,33 +16,25 @@
 	--accessibility-font-scale: 1;
 }
 
-body {
-	font-size: calc(16px * var(--accessibility-font-scale));
+html {
+	font-size: calc(100% * var(--accessibility-font-scale));
 }
 
-.accessibility-high-contrast body {
+.accessibility-easy-mode body {
 	background: #fff;
 	color: #111;
-	filter: contrast(1.15);
+	filter: contrast(1.12);
 }
 
-.accessibility-high-contrast body a,
-.accessibility-high-contrast body button {
-	text-decoration-thickness: 2px;
+.accessibility-easy-mode .font-serif {
+	font-family: 'DM Sans', sans-serif;
 }
 
-.accessibility-increased-spacing body {
-	line-height: 1.75;
-	letter-spacing: 0.02em;
-}
-
-.accessibility-reduced-motion *,
-.accessibility-reduced-motion *::before,
-.accessibility-reduced-motion *::after {
-	animation-duration: 0.01ms !important;
-	animation-iteration-count: 1 !important;
-	scroll-behavior: auto !important;
-	transition-duration: 0.01ms !important;
+.accessibility-easy-mode *,
+.accessibility-easy-mode *::before,
+.accessibility-easy-mode *::after {
+	animation: none !important;
+	transition: none !important;
 }
 
 * {
