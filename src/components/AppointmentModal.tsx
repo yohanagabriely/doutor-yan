@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Calendar, X, CheckCircle, Send, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { DENTIST_INFO, TREATMENTS } from '../data/dentistData';
@@ -9,18 +9,77 @@ interface AppointmentModalProps {
   onClose: () => void;
 }
 
+const APPOINTMENT_STORAGE_KEY = 'dr-yan-reserved-appointments';
+const WEEKDAY_TIMES = ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
+const SATURDAY_TIMES = ['08:00', '09:00', '10:00', '11:00'];
+
+interface ReservedAppointment {
+  date: string;
+  time: string;
+}
+
+const formatDateForLabel = (date: string) => {
+  return new Intl.DateTimeFormat('pt-BR', {
+    weekday: 'short',
+    day: '2-digit',
+    month: '2-digit',
+  }).format(new Date(`${date}T12:00:00`));
+};
+
+const getAvailableDates = () => {
+  const dates: string[] = [];
+  const date = new Date();
+  date.setHours(12, 0, 0, 0);
+
+  while (dates.length < 21) {
+    date.setDate(date.getDate() + 1);
+    const day = date.getDay();
+    if (day !== 0) {
+      dates.push(date.toISOString().slice(0, 10));
+    }
+  }
+
+  return dates;
+};
+
+const getTimesForDate = (date: string) => {
+  if (!date) return [];
+  return new Date(`${date}T12:00:00`).getDay() === 6 ? SATURDAY_TIMES : WEEKDAY_TIMES;
+};
+
+const readReservedAppointments = (): ReservedAppointment[] => {
+  try {
+    return JSON.parse(localStorage.getItem(APPOINTMENT_STORAGE_KEY) || '[]');
+  } catch {
+    return [];
+  }
+};
+
 export const AppointmentModal: React.FC<AppointmentModalProps> = ({ isOpen, onClose }) => {
   const [formData, setFormData] = useState<AppointmentFormData>({
     fullName: '',
     whatsapp: '',
     email: '',
     treatment: TREATMENTS[0].title,
-    preferredShift: 'tarde',
-    preferredDate: '',
+    appointmentTime: '',
+    appointmentDate: '',
     notes: '',
   });
 
   const [submitted, setSubmitted] = useState(false);
+  const availableDates = useMemo(getAvailableDates, []);
+  const [reservedAppointments, setReservedAppointments] = useState<ReservedAppointment[]>([]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setReservedAppointments(readReservedAppointments());
+    }
+  }, [isOpen]);
+
+  const availableTimes = getTimesForDate(formData.appointmentDate);
+  const isReserved = (time: string) => reservedAppointments.some(
+    (appointment) => appointment.date === formData.appointmentDate && appointment.time === time,
+  );
 
   if (!isOpen) return null;
 
@@ -30,7 +89,12 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({ isOpen, onCl
   };
 
   const handleSendWhatsApp = () => {
-    const text = `Olá Dr. Yan! Gostaria de agendar uma avaliação:%0A%0A*Nome:* ${encodeURIComponent(formData.fullName)}%0A*WhatsApp:* ${encodeURIComponent(formData.whatsapp)}%0A*Tratamento:* ${encodeURIComponent(formData.treatment)}%0A*Turno de Preferência:* ${encodeURIComponent(formData.preferredShift.toUpperCase())}%0A*Data Preferida:* ${encodeURIComponent(formData.preferredDate || 'A combinar')}%0A*Observações:* ${encodeURIComponent(formData.notes || 'Nenhuma')}`;
+    const reservation = { date: formData.appointmentDate, time: formData.appointmentTime };
+    const updatedReservations = [...reservedAppointments, reservation];
+    localStorage.setItem(APPOINTMENT_STORAGE_KEY, JSON.stringify(updatedReservations));
+    setReservedAppointments(updatedReservations);
+
+    const text = `Olá Dr. Yan! Gostaria de agendar uma avaliação:%0A%0A*Nome:* ${encodeURIComponent(formData.fullName)}%0A*WhatsApp:* ${encodeURIComponent(formData.whatsapp)}%0A*Tratamento:* ${encodeURIComponent(formData.treatment)}%0A*Data:* ${encodeURIComponent(formatDateForLabel(formData.appointmentDate))}%0A*Horário:* ${encodeURIComponent(formData.appointmentTime)}%0A*Observações:* ${encodeURIComponent(formData.notes || 'Nenhuma')}`;
     
     window.open(`https://wa.me/${DENTIST_INFO.whatsappNumber}?text=${text}`, '_blank');
     onClose();
@@ -107,38 +171,61 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({ isOpen, onCl
                   />
                 </div>
 
+                <div>
+                  <label className="block text-[11px] font-semibold text-gray-300 mb-1">Tratamento</label>
+                  <select
+                    value={formData.treatment}
+                    onChange={(e) => setFormData({ ...formData, treatment: e.target.value })}
+                    className="w-full bg-[#27272A] border border-white/10 rounded-xl px-3 py-3 text-xs text-white focus:outline-none focus:border-[#C29B72] transition-colors"
+                  >
+                    {TREATMENTS.map((t) => (
+                      <option key={t.id} value={t.title} className="bg-[#18181B] text-white">
+                        {t.title}
+                      </option>
+                    ))}
+                    <option value="Outro / Avaliação Geral" className="bg-[#18181B] text-white">
+                      Avaliação Geral
+                    </option>
+                  </select>
+                </div>
+
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-semibold text-gray-300 mb-1">Tratamento</label>
+                    <label className="block text-[11px] font-semibold text-gray-300 mb-1">Data disponível *</label>
                     <select
-                      value={formData.treatment}
-                      onChange={(e) => setFormData({ ...formData, treatment: e.target.value })}
+                      required
+                      value={formData.appointmentDate}
+                      onChange={(e) => setFormData({ ...formData, appointmentDate: e.target.value, appointmentTime: '' })}
                       className="w-full bg-[#27272A] border border-white/10 rounded-xl px-3 py-3 text-xs text-white focus:outline-none focus:border-[#C29B72] transition-colors"
                     >
-                      {TREATMENTS.map((t) => (
-                        <option key={t.id} value={t.title} className="bg-[#18181B] text-white">
-                          {t.title}
+                      <option value="" disabled className="bg-[#18181B] text-white">Escolha uma data</option>
+                      {availableDates.map((date) => (
+                        <option key={date} value={date} className="bg-[#18181B] text-white">
+                          {formatDateForLabel(date)}
                         </option>
                       ))}
-                      <option value="Outro / Avaliação Geral" className="bg-[#18181B] text-white">
-                        Avaliação Geral
-                      </option>
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-semibold text-gray-300 mb-1">Turno Preferido</label>
+                    <label className="block text-[11px] font-semibold text-gray-300 mb-1">Horário disponível *</label>
                     <select
-                      value={formData.preferredShift}
-                      onChange={(e) => setFormData({ ...formData, preferredShift: e.target.value as any })}
+                      required
+                      value={formData.appointmentTime}
+                      onChange={(e) => setFormData({ ...formData, appointmentTime: e.target.value })}
                       className="w-full bg-[#27272A] border border-white/10 rounded-xl px-3 py-3 text-xs text-white focus:outline-none focus:border-[#C29B72] transition-colors"
                     >
-                      <option value="manha" className="bg-[#18181B] text-white">Manhã (08h às 12h)</option>
-                      <option value="tarde" className="bg-[#18181B] text-white">Tarde (13h às 18h)</option>
-                      <option value="noite" className="bg-[#18181B] text-white">Sábado de manhã</option>
+                      <option value="" disabled className="bg-[#18181B] text-white">Escolha um horário</option>
+                      {availableTimes.map((time) => (
+                        <option key={time} value={time} disabled={isReserved(time)} className="bg-[#18181B] text-white">
+                          {time}{isReserved(time) ? ' (ocupado)' : ''}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
+
+                <p className="text-[10px] text-gray-500">Os horários exibidos seguem o funcionamento da clínica. A confirmação final será feita pelo WhatsApp.</p>
 
                 <button
                   type="submit"

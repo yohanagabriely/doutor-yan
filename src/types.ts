@@ -33,7 +33,7 @@ export interface AppointmentFormData {
   whatsapp: string;
   email: string;
   treatment: string;
-  preferredShift: 'manha' | 'tarde' | 'noite';
-  preferredDate: string;
+  appointmentDate: string;
+  appointmentTime: string;
   notes: string;
 }
